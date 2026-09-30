@@ -1,0 +1,17 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/simple-router
+simple-router.so
+simple-router.dylib
+simple-router.dll
+libsimple-router.a
+simple-router.a
+simple-router.lib
+simple-router-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst

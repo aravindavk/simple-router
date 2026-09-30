@@ -1,0 +1,5 @@
+name "simple-router"
+description "Simple Router based on the Radix Tree"
+authors "Aravinda VK <vkaravinda7@gmail.com>"
+copyright "Copyright © 2026, Aravinda VK <vkaravinda7@gmail.com>"
+license "MIT"
