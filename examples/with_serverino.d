@@ -4,20 +4,24 @@
  +/
 
 import std.json;
+import std.stdio;
 
 import serverino;
 import simple_router;
 
 alias Handler = void function(Request, Output, JSONValue);
 
-Router!Handler getRouter;
+SimpleRouter!Handler router;
 
 // Register routes
 static this()
 {
-    getRouter.register("/", &homeHandler);
-    getRouter.register("/services", &listServicesHandler);
-    getRouter.register("/services/:name", &getServiceHandler);
+    router.register("get", "/", &homeHandler);
+    router.register("get", "/services", &listServicesHandler);
+    router.register("get", "/services/:name", &getServiceHandler);
+    router.register("post", "/services", &createServiceHandler);
+    router.register("put", "/services/:name", &editServiceHandler);
+    router.register("delete", "/services/:name", &deleteServiceHandler);
 }
 
 void homeHandler(Request request, Output output, JSONValue params)
@@ -35,6 +39,21 @@ void getServiceHandler(Request request, Output output, JSONValue params)
     output ~= "Get Service (" ~ params["name"].str ~ ")";
 }
 
+void createServiceHandler(Request request, Output output, JSONValue params)
+{
+    output ~= "Create Service";
+}
+
+void editServiceHandler(Request request, Output output, JSONValue params)
+{
+    output ~= "Edit Service (" ~ params["name"].str ~ ")";
+}
+
+void deleteServiceHandler(Request request, Output output, JSONValue params)
+{
+    output ~= "Delete Service (" ~ params["name"].str ~ ")";
+}
+
 void error404(Request request, Output output, JSONValue params)
 {
     output.status = 404;
@@ -49,9 +68,9 @@ mixin ServerinoMain;
 @endpoint
 void root(Request request, Output output)
 {
-    auto route = getRouter.lookup(request.path);
+    auto route = router.lookup(request.method, request.path);
     if (route.isNull) return error404(request, output, JSONValue.init);
 
-    auto func = route.get.handler.get;
+    auto func = route.get.handler;
     func(request, output, route.get.params);
 }

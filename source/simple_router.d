@@ -59,10 +59,10 @@ void setPathParamValue(ref JSONValue params, string key, string value)
  * // Returns {"id": 1234, "action": "start"}
  * ---
  */
-JSONValue parsePathParams(string tmplPath, string path)
+JSONValue parsePathParams(string tmplPath, string path, string sep = "/")
 {
-    auto tmplParts = tmplPath.split("/");
-    auto pathParts = path.split("/");
+    auto tmplParts = tmplPath.strip(sep).split(sep);
+    auto pathParts = path.strip(sep).split(sep);
     JSONValue pathParams;
 
     foreach(idx, part; tmplParts)
@@ -78,7 +78,7 @@ JSONValue parsePathParams(string tmplPath, string path)
             auto key = part.replace("*", "");
             key = key.empty ? "*" : key;
             if (pathParts.length > idx)
-                setPathParamValue(pathParams, part, pathParts[idx .. $].join("/"));
+                setPathParamValue(pathParams, part, pathParts[idx .. $].join(sep));
         }
     }
 
@@ -160,21 +160,27 @@ bool isValid(string pattern, string value)
  * auto route2 = getRouter.lookup("/users/abcd"); // Returns the nil
  * ---
  */
-struct Router(T)
+struct SimpleRouter(T)
 {
     string label;
     string sep = "/";
     string fullPath;
-    Router[] children;
-    Nullable!T handler;
+    SimpleRouter[] children;
+    Nullable!T handler_;
     JSONValue params;
+    SimpleRouter!T[string] namespacedRoutes;
+
+    auto handler()
+    {
+        return handler_.get;
+    }
 
     /*
      * If handler is defined for this Route
      */
     bool handlerExists()
     {
-        return !handler.isNull;
+        return !handler_.isNull;
     }
 
     bool isVariable()
@@ -191,12 +197,12 @@ struct Router(T)
      * Find the node by name and return the reference so that
      * its children can be updated directly
      */
-    Nullable!(Router*) findChild(string name)
+    Nullable!(SimpleRouter*) findChild(string name)
     {
         foreach(child; children)
             if (child.label == name) return (&child).nullable;
 
-        return Nullable!(Router*).init;
+        return Nullable!(SimpleRouter*).init;
     }
 
     /*
@@ -208,27 +214,47 @@ struct Router(T)
 
         if (parts.empty)
         {
-            this.handler = handler;
+            this.handler_ = handler;
             return;
         }
 
-        Router* parentRouter = &this;
-        Nullable!(Router*) rtr;
+        SimpleRouter* parentRouter = &this;
+        Nullable!(SimpleRouter*) rtr;
         foreach(part; parts)
         {
             rtr = parentRouter.findChild(part);
             if (rtr.isNull)
-                parentRouter.children ~= Router(part, sep);
+                parentRouter.children ~= SimpleRouter(part, sep);
 
             parentRouter = &parentRouter.children[$-1];
         }
-        parentRouter.handler = handler;
+        parentRouter.handler_ = handler;
+    }
+
+    /*
+     * Convert any type to String for the namespace
+     */
+    string prepareNamespace(U)(U namespace)
+    {
+        return (namespace.to!string).toLower;
+    }
+
+    /*
+     * Register route with namespace
+     */
+    void register(U)(U namespace, string path, T handler)
+    {
+        auto ns = prepareNamespace(namespace);
+        if (ns !in namespacedRoutes)
+            namespacedRoutes[ns] = SimpleRouter!T();
+
+        namespacedRoutes[ns].register(path, handler);
     }
 
     /*
      * Find the matching child based on name or the pattern
      */
-    Nullable!Router matchingChild(string name)
+    Nullable!SimpleRouter matchingChild(string name)
     {
         foreach(child; children)
         {
@@ -236,18 +262,27 @@ struct Router(T)
                 return child.nullable;
         }
 
-        return Nullable!Router.init;
+        return Nullable!SimpleRouter.init;
+    }
+
+    /*
+     * Namespace based lookup
+     */
+    Nullable!(SimpleRouter!T) lookup(U)(U namespace, string name)
+    {
+        auto ns = prepareNamespace(namespace);
+        return namespacedRoutes[ns].lookup(name);
     }
 
     /*
      * Lookup for the given path
      */
-    Nullable!(Router!T) lookup(string name)
+    Nullable!(SimpleRouter!T) lookup(string name)
     {
-        alias RetType = Nullable!(Router!T);
+        alias RetType = Nullable!(SimpleRouter!T);
         auto parts = name.strip(sep).split(sep);
-        Router parentRouter = this;
-        Nullable!Router rtr;
+        SimpleRouter parentRouter = this;
+        Nullable!SimpleRouter rtr;
         string[] outLabel = [""]; // Root item
         int foundParts = 0;
 
@@ -265,7 +300,7 @@ struct Router(T)
             outLabel ~= rtr.get.label;
             auto outRtr = rtr.get;
             outRtr.fullPath = outLabel.join(sep);
-            outRtr.params = parsePathParams(outRtr.fullPath, name);
+            outRtr.params = parsePathParams(outRtr.fullPath, name, sep);
 
             if (rtr.get.isStar && rtr.get.handlerExists)
                 return outRtr.nullable;
@@ -289,7 +324,7 @@ unittest
     //alias Handler = typeof(&handler);
     alias Handler = void delegate(Request, Response);
 
-    Router!Handler root;
+    SimpleRouter!Handler root;
     root.register("/", &handler);
     root.register("/blog/:slug/edit", &handler);
     root.register("/file", &handler);
@@ -304,7 +339,7 @@ unittest
     assert(!root.lookup("/services/1234/5678").isNull);
     assert(root.lookup("/services/1234/5678").get.params["path"].str == "1234/5678");
 
-    Router!Handler root1;
+    SimpleRouter!Handler root1;
     root1.sep = "=";
     root1.register("=", &handler);
     root1.register("=blog=:slug=edit", &handler);
@@ -318,7 +353,7 @@ unittest
     assert(!root1.lookup("=file=1234=5678").isNull);
 
     // Priority to the first registered Route
-    Router!Handler root2;
+    SimpleRouter!Handler root2;
     root2.register("/services/:name/start", &handler);
     root2.register("/services/:name/stop", &handler);
     root2.register("/services/:name/:action", &handler);
@@ -327,7 +362,7 @@ unittest
     assert(root2.lookup("/services/1234/reset").get.fullPath == "/services/:name/:action");
 
     // Validations
-    Router!Handler root3;
+    SimpleRouter!Handler root3;
     root3.register("/blog/:id:integer", &handler);
     root3.register("/switch/:value:bool", &handler);
     assert(!root3.lookup("/blog/1234").isNull);
@@ -337,4 +372,17 @@ unittest
     assert(!root3.lookup("/switch/false").isNull);
     assert(root3.lookup("/switch/abcd").isNull);
     assert(parsePathParams("/services/:id:int/:action", "/services/1234/reset") == parseJSON(`{"id": 1234, "action": "reset"}`));
+
+    // Namespaced routes tests
+    SimpleRouter!Handler root4;
+    root4.register("get", "/notes", &handler);        // List
+    root4.register("post", "/notes", &handler);       // (C) Create
+    root4.register("get", "/notes/:id", &handler);    // (R) Retrive
+    root4.register("put", "/notes/:id", &handler);    // (U) Update
+    root4.register("delete", "/notes/:id", &handler); // (D) Delete
+    assert(!root4.lookup("get", "/notes").isNull);
+    assert(!root4.lookup("post", "/notes").isNull);
+    assert(!root4.lookup("get", "/notes/1234").isNull);
+    assert(!root4.lookup("put", "/notes/1234").isNull);
+    assert(!root4.lookup("delete", "/notes/1234").isNull);
 }

@@ -35,22 +35,23 @@ int getTodo(string[] args, JSONValue params)
 int main(string[] args)
 {
     alias Handler = int function(string[], JSONValue);
-    Router!Handler router;
+    SimpleRouter!Handler router;
+    router.sep = " ";
 
-    router.register("/todo", &listTodos);
-    router.register("/todo/:name", &getTodo);
+    router.register("todo", &listTodos);
+    router.register("todo :name", &getTodo);
 
     if (args.length < 2)
         return 1;
 
-    auto route = router.lookup(args[1]);
+    auto route = router.lookup(args[1 .. $].join(" "));
     if (route.isNull)
     {
         writeln("No Route found");
         return 1;
     }
 
-    auto func = route.get.handler.get;
+    auto func = route.get.handler;
     return func(args, route.get.params);
 }
 ```
