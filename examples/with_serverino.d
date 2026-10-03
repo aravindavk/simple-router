@@ -17,11 +17,11 @@ SimpleRouter!Handler router;
 static this()
 {
     router.register("get", "/", &homeHandler);
-    router.register("get", "/notes", &listNotesHandler);
-    router.register("get", "/notes/:id", &getNoteHandler);
-    router.register("post", "/notes", &createNoteHandler);
-    router.register("put", "/notes/:id", &editNoteHandler);
-    router.register("delete", "/notes/:id", &deleteNoteHandler);
+    router.register("get", "/api/notes", &listNotesHandler);
+    router.register("get", "/api/notes/:id", &getNoteHandler);
+    router.register("post", "/api/notes", &createNoteHandler);
+    router.register("put", "/api/notes/:id", &editNoteHandler);
+    router.register("delete", "/api/notes/:id", &deleteNoteHandler);
 }
 
 void homeHandler(Request request, Output output, JSONValue params)
@@ -54,7 +54,7 @@ void deleteNoteHandler(Request request, Output output, JSONValue params)
     output ~= "Delete Note (" ~ params["id"].str ~ ")";
 }
 
-void error404(Request request, Output output, JSONValue params)
+void error404(Request request, Output output)
 {
     output.status = 404;
     output ~= "Page not found";
@@ -79,7 +79,7 @@ mixin ServerinoMain;
  *
  * Example 2: List Notes
  * ---
- * $ curl -i -X GET http://localhost:8080/notes
+ * $ curl -i -X GET http://localhost:8080/api/notes
  * HTTP/1.1 200 OK
  * date: Sat, 03 Oct 2026 14:47:56 GMT
  * connection: keep-alive
@@ -91,7 +91,7 @@ mixin ServerinoMain;
  *
  * Example 3: Create Note
  * ---
- * $ curl -i -X POST http://localhost:8080/notes
+ * $ curl -i -X POST http://localhost:8080/api/notes
  * HTTP/1.1 200 OK
  * date: Sat, 03 Oct 2026 14:48:20 GMT
  * connection: keep-alive
@@ -103,7 +103,7 @@ mixin ServerinoMain;
  *
  * Example 4: Edit note
  * ---
- * $ curl -i -X PUT http://localhost:8080/notes/1234
+ * $ curl -i -X PUT http://localhost:8080/api/notes/1234
  * HTTP/1.1 200 OK
  * date: Sat, 03 Oct 2026 14:48:41 GMT
  * connection: keep-alive
@@ -115,7 +115,7 @@ mixin ServerinoMain;
  *
  * Example 5: Get note
  * ---
- * $ curl -i -X GET http://localhost:8080/notes/1234
+ * $ curl -i -X GET http://localhost:8080/api/notes/1234
  * HTTP/1.1 200 OK
  * date: Sat, 03 Oct 2026 14:48:59 GMT
  * connection: keep-alive
@@ -127,7 +127,7 @@ mixin ServerinoMain;
  *
  * Example 6: Delete note
  * ---
- * $ curl -i -X DELETE http://localhost:8080/notes/1234
+ * $ curl -i -X DELETE http://localhost:8080/api/notes/1234
  * HTTP/1.1 200 OK
  * date: Sat, 03 Oct 2026 14:49:19 GMT
  * connection: keep-alive
@@ -141,7 +141,7 @@ mixin ServerinoMain;
 void root(Request request, Output output)
 {
     auto route = router.lookup(request.method, request.path);
-    if (route.isNull) return error404(request, output, JSONValue.init);
+    if (route.isNull) return error404(request, output);
 
     auto func = route.get.handler;
     func(request, output, route.get.params);
