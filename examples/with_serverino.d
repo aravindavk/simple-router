@@ -17,11 +17,11 @@ SimpleRouter!Handler router;
 static this()
 {
     router.register("get", "/", &homeHandler);
-    router.register("get", "/services", &listServicesHandler);
-    router.register("get", "/services/:name", &getServiceHandler);
-    router.register("post", "/services", &createServiceHandler);
-    router.register("put", "/services/:name", &editServiceHandler);
-    router.register("delete", "/services/:name", &deleteServiceHandler);
+    router.register("get", "/notes", &listNotesHandler);
+    router.register("get", "/notes/:id", &getNoteHandler);
+    router.register("post", "/notes", &createNoteHandler);
+    router.register("put", "/notes/:id", &editNoteHandler);
+    router.register("delete", "/notes/:id", &deleteNoteHandler);
 }
 
 void homeHandler(Request request, Output output, JSONValue params)
@@ -29,29 +29,29 @@ void homeHandler(Request request, Output output, JSONValue params)
     output ~= "Home";
 }
 
-void listServicesHandler(Request request, Output output, JSONValue params)
+void listNotesHandler(Request request, Output output, JSONValue params)
 {
-    output ~= "Services list";
+    output ~= "Notes list";
 }
 
-void getServiceHandler(Request request, Output output, JSONValue params)
+void getNoteHandler(Request request, Output output, JSONValue params)
 {
-    output ~= "Get Service (" ~ params["name"].str ~ ")";
+    output ~= "Get Note (" ~ params["id"].str ~ ")";
 }
 
-void createServiceHandler(Request request, Output output, JSONValue params)
+void createNoteHandler(Request request, Output output, JSONValue params)
 {
-    output ~= "Create Service";
+    output ~= "Create Note";
 }
 
-void editServiceHandler(Request request, Output output, JSONValue params)
+void editNoteHandler(Request request, Output output, JSONValue params)
 {
-    output ~= "Edit Service (" ~ params["name"].str ~ ")";
+    output ~= "Edit Note (" ~ params["id"].str ~ ")";
 }
 
-void deleteServiceHandler(Request request, Output output, JSONValue params)
+void deleteNoteHandler(Request request, Output output, JSONValue params)
 {
-    output ~= "Delete Service (" ~ params["name"].str ~ ")";
+    output ~= "Delete Note (" ~ params["id"].str ~ ")";
 }
 
 void error404(Request request, Output output, JSONValue params)
@@ -64,6 +64,78 @@ mixin ServerinoMain;
 
 /*
  * Main Endpoint Route everything from here
+ *
+ * Example 1: Home page
+ * ---
+ * $ curl -i -X GET http://localhost:8080
+ * HTTP/1.1 200 OK
+ * date: Sat, 03 Oct 2026 14:44:57 GMT
+ * connection: keep-alive
+ * content-length: 4
+ * content-type: text/html;charset=utf-8
+ *
+ * Home
+ * ---
+ *
+ * Example 2: List Notes
+ * ---
+ * $ curl -i -X GET http://localhost:8080/notes
+ * HTTP/1.1 200 OK
+ * date: Sat, 03 Oct 2026 14:47:56 GMT
+ * connection: keep-alive
+ * content-length: 10
+ * content-type: text/html;charset=utf-8
+ *
+ * Notes list
+ * ---
+ *
+ * Example 3: Create Note
+ * ---
+ * $ curl -i -X POST http://localhost:8080/notes
+ * HTTP/1.1 200 OK
+ * date: Sat, 03 Oct 2026 14:48:20 GMT
+ * connection: keep-alive
+ * content-length: 11
+ * content-type: text/html;charset=utf-8
+ *
+ * Create Note
+ * ---
+ *
+ * Example 4: Edit note
+ * ---
+ * $ curl -i -X PUT http://localhost:8080/notes/1234
+ * HTTP/1.1 200 OK
+ * date: Sat, 03 Oct 2026 14:48:41 GMT
+ * connection: keep-alive
+ * content-length: 16
+ * content-type: text/html;charset=utf-8
+ *
+ * Edit Note (1234)
+ * ---
+ *
+ * Example 5: Get note
+ * ---
+ * $ curl -i -X GET http://localhost:8080/notes/1234
+ * HTTP/1.1 200 OK
+ * date: Sat, 03 Oct 2026 14:48:59 GMT
+ * connection: keep-alive
+ * content-length: 15
+ * content-type: text/html;charset=utf-8
+ *
+ * Get Note (1234)
+ * ---
+ *
+ * Example 6: Delete note
+ * ---
+ * $ curl -i -X DELETE http://localhost:8080/notes/1234
+ * HTTP/1.1 200 OK
+ * date: Sat, 03 Oct 2026 14:49:19 GMT
+ * connection: keep-alive
+ * content-length: 18
+ * content-type: text/html;charset=utf-8
+ *
+ * Delete Note (1234)
+ * ---
  */
 @endpoint
 void root(Request request, Output output)
